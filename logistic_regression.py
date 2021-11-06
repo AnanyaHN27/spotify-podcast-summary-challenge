@@ -4,14 +4,15 @@ import spacy
 import numpy as np # linear algebra
 import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 from sklearn.model_selection import train_test_split #split data into train and test sets
-from sklearn.feature_extraction.text import CountVectorizer #convert text comment into a numeric vector
-from sklearn.feature_extraction.text import TfidfTransformer #use TF IDF transformer to change text vector created by count vectorizer
-from sklearn.svm import SVC# Support Vector Machine
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_score#to handle calculating metrics for evaluation
 from sklearn.metrics import recall_score
 from sklearn.pipeline import Pipeline #pipeline to implement steps in series
 from gensim import parsing # To stem data
 import nltk
+from sklearn import metrics
+import seaborn as sns
+import matplotlib.pyplot as plt
 from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
 from nltk.tokenize import TreebankWordTokenizer
@@ -21,6 +22,7 @@ nltk.download('punkt')
 nltk.download("stopwords")
 nltk.download('wordnet')
 import time
+
 
 start = time.time()
 
@@ -57,12 +59,6 @@ def tokenise(text):
         tokens.extend(clean_sentence(line.strip()))
     return ' '.join(str(elem) for elem in tokens)
 
-#do more here!
-#def parse(s, i):
- #   parsing.stem_text(s)
-  #  print(s)
-   # return s
-
 for i in range(0,len(df)):
     df.iloc[i,1]=tokenise(df.iloc[i,1])
 
@@ -73,33 +69,38 @@ X_to_ep = dict(zip(X, ep_id))
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25)
 
 
-text_clf = Pipeline([('vect', CountVectorizer()), ('tfidf', TfidfTransformer()), ('clf', SVC(kernel='rbf'))])
+
+#Use pipeline to carry out steps in sequence with a single object
+#SVM's rbf kernel gives highest accuracy in this classification problem.
+
+logisticRegr = LogisticRegression()
 
 print ("Training")
 #train model
-text_clf.fit(X_train, y_train)
+logisticRegr.fit(X_train, y_train)
 
 print("Predicting")
-#predict class from test data 
-predicted = text_clf.predict(X_test)
+#predict class form test data 
+predicted = logisticRegr.predict(X_test)
 print(predicted, y_test)
 print("Macro Precision: ", precision_score(y_test, predicted, average='macro'))
 print("Micro Precision: ", precision_score(y_test, predicted, average='micro'))
 
 print("Macro Recall: ", recall_score(y_test, predicted, average='macro'))
 print("Micro Recall: ", recall_score(y_test, predicted, average='micro'))
+
+print("Accuracy: ", metrics.accuracy_score(y_test, predicted, normalize=False))
 end = time.time()
 print(end-start)
 
-filter_out = []
+for prediction, i in enumerate(predicted):
+    print(prediction, X_test[i], X_to_ep[X_test[i]])
 
-for i, prediction in enumerate(predicted):
-    #print(prediction, X_test[i], X_to_ep[X_test[i]])
-    if prediction == "Yes":
-        filter_out.add(X_to_ep[X_test[i]])
-
-df_filter = pd.DataFrame(filter_out)
-df.to_csv('eps_to_filter.csv', index=False)
-
+plt.figure(figsize=(9,9))
+sns.heatmap(cm, annot=True, fmt=".3f", linewidths=.5, square = True, cmap = 'Blues_r');
+plt.ylabel('Actual label');
+plt.xlabel('Predicted label');
+all_sample_title = 'Accuracy Score: {0}'.format(metrics.accuracy_score(y_test, predicted, normalize=False))
+plt.title(all_sample_title, size = 15);
 
 

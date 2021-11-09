@@ -24,19 +24,17 @@ import time
 
 start = time.time()
 
-cnx = sqlite3.connect('podcast_test_set.db')
+#cnx = sqlite3.connect('podcast_test_set.db')
 
-df = pd.read_sql_query("SELECT * FROM dataset_", cnx)
+#df = pd.read_sql_query("SELECT * FROM dataset_", cnx)
 
-"""
 Using the self-annotated test set
 
-#df_labels = pd.read_csv('labels.csv')
-#df_labels = df_labels[(df_labels.labels != "No") | (df_labels.labels != "Yes")]
-#df = pd.concat([df, df_labels], axis=1)
-#df = df[0: len(df_labels)]
-#df = pd.read_csv('tiny_test.csv')
-"""
+df_labels = pd.read_csv('labels.csv')
+df_labels = df_labels[(df_labels.labels != "No") | (df_labels.labels != "Yes")]
+df = pd.concat([df, df_labels], axis=1)
+df = df[0: len(df_labels)]
+df = pd.read_csv('tiny_test.csv')
 
 
 def clean_sentence(text):
@@ -57,12 +55,6 @@ def tokenise(text):
         tokens.extend(clean_sentence(line.strip()))
     return ' '.join(str(elem) for elem in tokens)
 
-#do more here!
-#def parse(s, i):
- #   parsing.stem_text(s)
-  #  print(s)
-   # return s
-
 for i in range(0,len(df)):
     df.iloc[i,1]=tokenise(df.iloc[i,1])
 
@@ -71,7 +63,7 @@ X_to_ep = dict(zip(X, ep_id))
 #X, y = df['transcript'].tolist(), df['labels'].tolist() #using the self-annotated test set
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25)
-
+X_dev, X_train = train_test_split(X_train, test_size=0.7)
 
 text_clf = Pipeline([('vect', CountVectorizer()), ('tfidf', TfidfTransformer()), ('clf', SVC(kernel='rbf'))])
 
@@ -81,7 +73,7 @@ text_clf.fit(X_train, y_train)
 
 print("Predicting")
 #predict class from test data 
-predicted = text_clf.predict(X_test)
+predicted = text_clf.predict(X_dev)
 print(predicted, y_test)
 print("Macro Precision: ", precision_score(y_test, predicted, average='macro'))
 print("Micro Precision: ", precision_score(y_test, predicted, average='micro'))
@@ -96,7 +88,7 @@ filter_out = []
 for i, prediction in enumerate(predicted):
     #print(prediction, X_test[i], X_to_ep[X_test[i]])
     if prediction == "Yes":
-        filter_out.add(X_to_ep[X_test[i]])
+        filter_out.append(X_to_ep[X_test[i]])
 
 df_filter = pd.DataFrame(filter_out)
 df.to_csv('eps_to_filter.csv', index=False)

@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import sys
+import re
 import sqlite3 
 
 
@@ -17,6 +18,14 @@ sponsor TEXT
 # execute the statement 
 crsr.execute(sql_command)
 
+def contain_url(sentence):
+    x = re.search("((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.([a-zA-Z]){2,6}([a-zA-Z0-9\.\&\/\?\:@\-_=#])*", sentence)
+    return not x==None
+
+def contain_spon(sentence):
+    spon_list = ["Anchor: The easiest way to make a podcast.", "anchor", "sponsor"]
+    return any(i in sentence for i in spon_list)
+
 def add_to_sql(podcast):
     """
     This function takes in the podcast's json transcript file and concatentates all the transcript
@@ -32,20 +41,13 @@ def add_to_sql(podcast):
             except:
                 pass #not all item with 'alternatives' key contain a 'transcript' key
 
-    sponsor = ""
-    sponsor_words = ["sponsor", "Anchor"]
-    for word in sponsor_words:
-        if word in transcript:
-            sponsor = "Yes"
-        else:
-            sponsor = "No"
+    sponsor = (containAnchor(transcript))
             
     episode_id = "spotify:episode:" + Path(podcast).stem #This is the format of the episode_uri in the metadata.csv file
-    print(episode_id, sponsor)
-
-    sql_command = "INSERT INTO dataset_ (episode_id, transcript, sponsor) VALUES (?, ?, ?);"
-    vals = (episode_id, transcript, sponsor)
-    crsr.execute(sql_command, vals)
+    if not contain_spon(transcript) and not contain_url(transcript) and len(transcript.split()) < 100:
+        sql_command = "INSERT INTO dataset_ (episode_id, transcript) VALUES (?, ?);"
+        vals = (episode_id, transcript, sponsor)
+        crsr.execute(sql_command, vals)
 
 
 def podcasts_to_df(directory_path):

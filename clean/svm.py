@@ -29,7 +29,6 @@ def hybrid_using_auto_annotated():
         df = pd.read_sql_query("SELECT * FROM dataset_", cnx)
         return df
 
-
 #Using the self-annotated test set
 
 def using_self_annotated():
@@ -69,8 +68,8 @@ for i in range(0,len(df)):
     
 #X, y = df['transcript'].tolist(), df['labels'].tolist() #using the self-annotated test set
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=11)
-X_dev, X_train = train_test_split(X_train, test_size=0.7, random_state=11)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=11)
+X_dev, X_train = train_test_split(X_train, test_size=0.78, random_state=11)
 
 text_clf = Pipeline([('vect', CountVectorizer()), ('tfidf', TfidfTransformer()), ('clf', SVC(kernel='rbf'))])
 
@@ -92,7 +91,6 @@ print(end-start)
 
 def get_sponsored_episodes(predicted, X_test, X_to_ep):
         filter_out = []
-
         for i, prediction in enumerate(predicted):
             if prediction == "Yes":
                 filter_out.append(X_to_ep[X_test[i]])

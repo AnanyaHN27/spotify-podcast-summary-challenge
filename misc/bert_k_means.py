@@ -212,7 +212,7 @@ for epoch in range(2):
     train(epoch)
 
 sentence_embedding_list = mean_pooling(model(**tokenizer(testing_set)))
-sum_index = [k_means(embedding) for embedding in sentence_embedding_list]
+sum_index = k_means(embedding)
 summ_list = [bert_summarise(sum_index[i], t) for enumerate(i, t) in sentence_embedding_list]
 
 (pd.DataFrame(summ_list)).to_csv("bert_names.csv", index=False)

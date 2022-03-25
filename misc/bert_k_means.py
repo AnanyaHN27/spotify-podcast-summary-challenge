@@ -197,6 +197,17 @@ def bert_summarise(sum_index, text):
     
   return summary
 
+sum_of_squared_distances = []
+for k in len(sentence_embedding_list):
+    km = KMeans(n_clusters=k)
+    km = km.fit(data_transformed)
+    sum_of_squared_distances.append(km.inertia_)
+plt.plot(sentence_embedding_list, sum_of_squared_distances, 'bx-')
+plt.xlabel('k')
+plt.ylabel('Sum_of_squared_distances')
+plt.title('Elbow Method For Optimal k')
+plt.show()
+
 for epoch in range(2):
     train(epoch)
 

@@ -161,7 +161,7 @@ class Dataset(object):
 
     return vocab
 
-  def generator(self, batch_size = 1, src_vocab=None, tgt_vocab=None,
+  def generator(self, batch_size = 16, src_vocab=None, tgt_vocab=None,
                 ext_vocab=True):
     ptr = len(self.pairs)  # make sure to shuffle at first run
     if ext_vocab:

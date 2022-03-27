@@ -11,11 +11,9 @@ import os
 import re
 from tempfile import TemporaryDirectory
 import subprocess
-from multiprocessing.dummy import Pool
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from typing import NamedTuple, List, Callable, Dict, Tuple, Optional
 from collections import Counter
 from random import shuffle
 from functools import lru_cache
@@ -31,8 +29,6 @@ from tqdm import tqdm
 import pandas as pd
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-import tarfile
-from io import BytesIO
 
 class Vocab(object):
 

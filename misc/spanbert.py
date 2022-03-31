@@ -20,7 +20,6 @@ Original file is located at
 
 import pandas as pd
 import csv
-
 import torch
 from summarizer import Summarizer
 from summarizer.coreference_handler import CoreferenceHandler
@@ -33,10 +32,11 @@ config = AutoConfig.from_pretrained("SpanBERT/spanbert-base-cased")
 config.output_hidden_states=True
 tokenizer = AutoTokenizer.from_pretrained("SpanBERT/spanbert-base-cased")
 model = AutoModel.from_pretrained("SpanBERT/spanbert-base-cased", config=custom_config)
+handler = CoreferenceHandler(greedyness=.5)
+spanbert_model = Summarizer(custom_model = custom_model, custom_tokenizer=custom_tokenizer, sentence_handler=custom_handler)
 
-def spanBert(transcript, num_sentences):
-  inputs = tokenizer(transcript, max_length=512, pad_to_max_length=True, return_tensors="pt")
-  outputs = model(**inputs)
+def spanBert(transcript):
+  outputs = spanbert_model(transcript, ratio:0.3)
   return ''.join(outputs)
 
 end = 0

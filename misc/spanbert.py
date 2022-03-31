@@ -21,28 +21,23 @@ Original file is located at
 import pandas as pd
 import csv
 
-
 import torch
-from summarizer import Summarizer
 from summarizer import Summarizer
 from summarizer.coreference_handler import CoreferenceHandler
 from transformers import AutoConfig, AutoTokenizer, AutoModel
 
 reference_results = pd.read_csv('/content/drive/MyDrive/Colab Notebooks/pickled_for_colab.csv')
 reference_results.head(1)
-model = Summarizer()
 
-custom_config = AutoConfig.from_pretrained("SpanBERT/spanbert-base-cased")
-custom_config.output_hidden_states=True
-custom_tokenizer = AutoTokenizer.from_pretrained("SpanBERT/spanbert-base-cased")
-custom_model = AutoModel.from_pretrained("SpanBERT/spanbert-base-cased", config=custom_config)
-custom_handler = CoreferenceHandler(greedyness=.5)
-
-spanbert_model = Summarizer(custom_model = custom_model, custom_tokenizer=custom_tokenizer, sentence_handler=custom_handler)
+config = AutoConfig.from_pretrained("SpanBERT/spanbert-base-cased")
+config.output_hidden_states=True
+tokenizer = AutoTokenizer.from_pretrained("SpanBERT/spanbert-base-cased")
+model = AutoModel.from_pretrained("SpanBERT/spanbert-base-cased", config=custom_config)
 
 def spanBert(transcript, num_sentences):
-  result = spanbert_model(transcript, min_length=60, num_sentences=num_sentences)
-  return ''.join(result)
+  inputs = tokenizer(transcript, max_length=512, pad_to_max_length=True, return_tensors="pt")
+  outputs = model(**inputs)
+  return ''.join(outputs)
 
 end = 0
 new_df = []

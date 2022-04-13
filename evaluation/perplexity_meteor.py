@@ -32,7 +32,7 @@ def tokenise(train_sentences):
   tokenized_text = [list(map(str.lower, nltk.tokenize.word_tokenize(sent))) for sent in train_sentences]
   return tokenized_text
 
-def train_fit(tokenized_text, test_sentences)
+def train_fit(tokenized_text, test_sentences):
   n = 2
   train_data = [nltk.bigrams(t,  pad_right=True, pad_left=True, left_pad_symbol="<s>", right_pad_symbol="</s>") for t in tokenized_text]
   words = [word for sent in tokenized_text for word in sent]

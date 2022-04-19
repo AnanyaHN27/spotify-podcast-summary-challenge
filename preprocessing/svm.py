@@ -71,7 +71,7 @@ for i in range(0,len(df)):
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=11)
 X_dev, X_train = train_test_split(X_train, test_size=0.78, random_state=11)
 
-text_clf = Pipeline([('vect', CountVectorizer()), ('tfidf', TfidfTransformer()), ('clf', SVC(kernel='rbf'))])
+text_clf = Pipeline([('vect', CountVectorizer()), ('tfidf', TfidfTransformer()), ('clf', SVC(kernel='rbf', gamma='scale'))])
 
 print ("Training")
 #train model

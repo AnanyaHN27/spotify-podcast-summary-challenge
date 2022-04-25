@@ -1,67 +1,58 @@
+import os
 import json
-from pathlib import Path
-import sys
+import pandas as pd
 import re
-import sqlite3 
+import sqlite3
 
-connection = sqlite3.connect("podcast_test_set.db") #instantiate a database to write the table to
+# instantiate a database to write the table to
+connection = sqlite3.connect("podcast_test_set.db") 
 crsr = connection.cursor()
 
-# SQL command to create a table in the database 
+# create database database 
 sql_command = """CREATE TABLE dataset_ ( 
 episode_id TEXT PRIMARY KEY, 
 transcript TEXT,
 sponsor TEXT
 );"""
 
-# execute the statement 
-crsr.execute(sql_command)
+# get the main directory
+main_dir = 'podcasts-transcripts-6to7.tar/podcasts-transcripts-6to7/spotify-podcasts-2020/podcasts-transcripts'
 
+# does it contain urls?
 def contain_url(sentence):
     x = re.search("((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.([a-zA-Z]){2,6}([a-zA-Z0-9\.\&\/\?\:@\-_=#])*", sentence)
     return not x==None
 
+# does it contain sponsors?
 def contain_spon(sentence):
     spon_list = ["Anchor: The easiest way to make a podcast.", "anchor", "sponsor", "This podcast is sponsored by *"]
     spon_reg_list = map(re.compile, spon_list)
     return any(i.match(sentence) for i in spon_reg_list)
 
-def add_to_sql(podcast):
-    """
-    This function takes in the podcast's json transcript file and concatentates all the transcript
-    segments to form a long running transcript. Information regarding when each word is uttered is 
-    discarded. It builds an sql table that is then written to a .db file.
-    """
-    transcript = ""
-    with open(str(podcast)) as json_file:
-        data = json.load(json_file)
-        for item in data['results']:
-            try:
-                transcript += ' ' + item['alternatives'][0]['transcript']
-            except:
-                pass #not all item with 'alternatives' key contain a 'transcript' key
+list_of_transcripts = []
+count = 0
 
-    sponsor = (containAnchor(transcript))
-            
-    episode_id = "spotify:episode:" + Path(podcast).stem #This is the format of the episode_uri in the metadata.csv file
-    if not contain_spon(transcript) and not contain_url(transcript) and len(transcript.split()) < 100:
-        sql_command = "INSERT INTO dataset_ (episode_id, transcript) VALUES (?, ?);"
-        vals = (episode_id, transcript, sponsor)
-        crsr.execute(sql_command, vals)
-
-
-def podcasts_to_df(directory_path):
-    """
-    This function takes in the folder where the dataset is located and builds a table for each
-    podcast transcript file in the folder.
-    """
-    rootdir = Path(directory_path)
-    file_list = [f for f in rootdir.glob('**/*') if f.is_file()]
-    
-    for file in file_list:
-        add_to_sql(file)
-
-podcasts_to_df('podcasts-transcripts-3to5.tar/podcasts-transcripts-3to5/spotify-podcasts-2020/podcasts-transcripts')
+for filename in os.listdir(main_dir):
+    for i_file in os.listdir(main_dir + "/" + filename): #6
+        for j_file in os.listdir(main_dir + "/" + filename + "/" + i_file):
+            for show in os.listdir(main_dir + "/" + filename + "/" + i_file + "/" + j_file):# j_file:
+                if show != "show_7CoR5k5P9kalXZ7m2z0deo":
+                        with open(main_dir + "/" + filename + "/" + i_file + "/" + j_file + "/" + show) as f:
+                          data = json.load(f)
+                        results = data['results']
+                        per_ep_string = ""
+                        for i in results:
+                            for j in i['alternatives']:
+                                if "transcript" in j:
+                                    per_ep_string += j['transcript']
+                                    print(j['transcript'])
+                        per_ep_string.replace("\t", "")
+			sponsor = (containAnchor(transcript))
+			if not contain_spon(per_ep_string) and not contain_url(per_ep_string) and len(per_ep_string.split()) < 100:
+          sql_command = "INSERT INTO dataset_ (episode_id, transcript) VALUES (?, ?);"
+        	vals = (episode_id, transcript, sponsor)
+        	crsr.execute(sql_command, vals)
+                    
+# write to the database and close                
 connection.commit()
 connection.close()
-

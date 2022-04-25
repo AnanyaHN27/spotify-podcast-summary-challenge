@@ -1,7 +1,9 @@
+"""*Imports*"""
 from transformers import BartTokenizer, BartForConditionalGeneration
 import pandas as pd
 import numpy as np
 
+"""*Get tokeniser and the data*"""
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-large-cnn')
 df = pd.read_csv("/data/pickled_for_colab.csv")
 
@@ -9,6 +11,7 @@ trans_lst = df.transcript.tolist()
 
 encoded_final_lst = []
 
+"""*Handle the truncation*"""
 for trans in trans_lst:
   enc_lst = tokenizer.encode(trans)
   if len(enc_lst) > 512:
@@ -24,5 +27,5 @@ for trans in trans_lst:
     truncated = first_half + second_half
     encoded_final_lst.append([truncated])
 
-##writing to file
+"""*Write to the file*"""
 encoded_final_lst.to_csv("/data/custom_truncation.csv")

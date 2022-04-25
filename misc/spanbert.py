@@ -13,10 +13,11 @@ Original file is located at
 !pip install spacy==2.1.0 #notebook crashes on other versions
 !python -m spacy download en
 !pip install bert-extractive-summarizer
-
 !pip install spacy
 !pip install neuralcoref
 !pip install --upgrade bert-extractive-summarizer
+
+"""*Imports*"""
 
 import pandas as pd
 import csv
@@ -25,28 +26,28 @@ from summarizer import Summarizer
 from summarizer.coreference_handler import CoreferenceHandler
 from transformers import AutoConfig, AutoTokenizer, AutoModel
 
-reference_results = pd.read_csv('/content/drive/MyDrive/Colab Notebooks/pickled_for_colab.csv')
-reference_results.head(1)
+"""*Define the configurations, model and tokenizer*"""
 
 config = AutoConfig.from_pretrained("SpanBERT/spanbert-base-cased")
 config.output_hidden_states=True
 tokenizer = AutoTokenizer.from_pretrained("SpanBERT/spanbert-base-cased")
 model = AutoModel.from_pretrained("SpanBERT/spanbert-base-cased", config=custom_config)
-handler = CoreferenceHandler(greedyness=.5)
-spanbert_model = Summarizer(custom_model = custom_model, custom_tokenizer=custom_tokenizer, sentence_handler=custom_handler)
 
-def spanBert(transcript):
-  outputs = spanbert_model(transcript, ratio:0.3)
+"""*Train SpanBERT*"""
+
+def spanBert(transcript, num_sentences):
+  inputs = tokenizer(transcript, max_length=512, pad_to_max_length=True, return_tensors="pt")
+  outputs = model(**inputs)
   return ''.join(outputs)
 
-end = 0
-new_df = []
+"""*Generate and write summaries to csv to be used as input for others*"""
+
+reference_results = pd.read_csv('/content/drive/MyDrive/Dissertation/data/pickled_for_colab.csv')
+
+summaries_df = []
 for i in range(transcripts.shape[0]):
   print("step: ", i)
   summ = spanBert(transcripts['transcript'][i], 4)
-  new_df.append([summ])
-  if (end%50 == 0):
-    df = pd.DataFrame(new_df,columns=['trans'])
-    name = "span_bert" + "_" + str(i) + ".csv"
-    df.to_csv('/content/drive/MyDrive/Colab Notebooks/' + name)
-  end += 1
+  summaries_df.append([summ])
+
+df.to_csv('/content/drive/MyDrive/Dissertation/data/' + 'span_bert.csv')

@@ -561,7 +561,7 @@ class Seq2Seq(nn.Module):
 
   def forward(self, input_tensor, target_tensor=None, input_lengths=None, criterion=None, *,
               forcing_ratio=0, partial_forcing=True, ext_vocab_size=None, sample=False,
-              saved_out=None, include_cover_loss=False:
+              saved_out=None, include_cover_loss=False):
    
     input_length = input_tensor.size(0)
     batch_size = input_tensor.size(1)

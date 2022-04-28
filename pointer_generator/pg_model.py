@@ -144,7 +144,7 @@ class Dataset(object):
   def build_vocab(self, src=True, tgt=True,
                   embed_file="/content/drive/MyDrive/Dissertation/data/textrank.csv"):
     
-    vocab = Vocab())
+    vocab = Vocab()
     for example in self.pairs:
       if src:
         vocab.add_words(example[0]) #takes sentence as input

@@ -80,8 +80,8 @@ class DataHandler(Dataset):
         transcript = str(self.transcript[index])
         transcript = ' '.join(transcript.split())
 
-        episode_description = str(self.text[index])
-        episode_description = ' '.join(text.split())
+        episode_description = str(self.episode_description[index])
+        episode_description = ' '.join(episode_description.split())
 
         source = self.tokenizer.batch_encode_plus([transcript], max_length= MAX_LEN, pad_to_max_length=True,return_tensors='pt')
         target = self.tokenizer.batch_encode_plus([episode_description], max_length= SUMMARY_LEN, pad_to_max_length=True,return_tensors='pt')
@@ -102,7 +102,7 @@ class DataHandler(Dataset):
 
 def train(epoch):
     model.train()
-    for _,data in enumerate(training_loader, 0):
+    for i, data in enumerate(training_loader, 0):
         y = data['target_ids'].to(device, dtype = torch.long)
         y_ids = y[:, :-1].contiguous()
         labels = y[:, 1:].clone().detach()

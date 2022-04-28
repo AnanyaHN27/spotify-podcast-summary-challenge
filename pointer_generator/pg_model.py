@@ -264,7 +264,7 @@ def train_batch(batch, model, criterion, optimizer, *,
   return loss_value / target_length, None
 
 def train(train_generator, vocab, model, valid_generator=None, rl_ratio=1
-          saved_state=None):
+      ,saved_state=None):
   
   model.to(DEVICE)
   

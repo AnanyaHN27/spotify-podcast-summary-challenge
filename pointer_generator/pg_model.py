@@ -366,8 +366,7 @@ class Hypothesis(object):
     return Hypothesis(tokens=self.tokens + [token], log_probs=self.log_probs + [log_prob],
                       dec_hidden=dec_hidden, dec_states=
                       self.dec_states + [dec_hidden] if add_dec_states else self.dec_states,
-                      enc_attn_weights=self.enc_attn_weights + [enc_attn]
-                      self.enc_attn_weights,
+                      enc_attn_weights=self.enc_attn_weights + [enc_attn],
                       num_non_words=self.num_non_words + 1 if non_word else self.num_non_words)
 
 """*Creating the Encoder, Decoder, Seq2Seq models*"""

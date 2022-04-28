@@ -32,12 +32,14 @@ config = AutoConfig.from_pretrained("SpanBERT/spanbert-base-cased")
 config.output_hidden_states=True
 tokenizer = AutoTokenizer.from_pretrained("SpanBERT/spanbert-base-cased")
 model = AutoModel.from_pretrained("SpanBERT/spanbert-base-cased", config=custom_config)
+handler = CoreferenceHandler(greedyness=.5)
+spanbert_model = Summarizer(custom_model = model, custom_tokenizertokenizer, sentence_handler=handler)
 
 """*Train SpanBERT*"""
 
 def spanBert(transcript, num_sentences):
   inputs = tokenizer(transcript, max_length=512, pad_to_max_length=True, return_tensors="pt")
-  outputs = model(**inputs)
+  outputs = spanbert_model(**inputs, num_sentences)
   return ''.join(outputs)
 
 """*Generate and write summaries to csv to be used as input for others*"""

@@ -22,65 +22,103 @@ import torch
 
 """*Setting configurations, loading data*"""
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 logging.basicConfig(level=logging.INFO)
 
 model = EncoderDecoderModel.from_pretrained("patrickvonplaten/longformer2roberta-cnn_dailymail-fp16")
-model.to("cuda")
+model.to(DEVICE)
 tokenizer = LongformerTokenizer.from_pretrained("allenai/longformer-base-4096")
 
-# load train, validation and test data
-train_dataset = load_dataset('csv', data_files='/content/drive/MyDrive/Dissertation/data/pickled_for_colab.csv', split="train[:75%]")
-val_dataset = load_dataset('csv', data_files='/content/drive/MyDrive/Dissertation/data/pickled_for_colab.csv', split="train[:25%]")
-test_dataset = load_dataset('csv', data_files='/content/drive/MyDrive/Dissertation/data/pickled_for_colab.csv', split='test')
-# load rouge for validation
+train_dataset = load_dataset('csv', data_files='/content/drive/MyDrive/Colab Notebooks/pickled_for_colab.csv', split="train[:75%]")
+val_dataset = load_dataset('csv', data_files='/content/drive/MyDrive/Colab Notebooks/pickled_for_colab.csv', split="train[:15%]")
+test_dataset = load_dataset('csv', data_files='/content/drive/MyDrive/Colab Notebooks/pickled_for_colab.csv', split="train[:10%]")
+
 rouge = nlp.load_metric("rouge", experiment_id=2)
 
-# enable gradient checkpointing for longformer encoder
-model.encoder.config.gradient_checkpointing = True
-
-# decoding
-model.config.decoder_start_token_id = tokenizer.bos_token_id
-model.config.eos_token_id = tokenizer.eos_token_id
-model.config.max_length = 142
-model.config.min_length = 56
-model.config.no_repeat_ngram_size = 3
-model.early_stopping = True
-model.length_penalty = 2.0
-model.num_beams = 4
-encoder_length = 4096
-decoder_length = 128
-batch_size = 16
+ENCODER_LENGTH = 4096
+DECODER_LENGTH = 144
+BATCH_SIZE = 16
 
 """*Decoding and training by instantiating the Trainer*"""
 
-# map data correctly
-def map_to_encoder_decoder_inputs(batch):
-    inputs = tokenizer(batch["transcript"], padding="max_length", truncation=True, max_length=encoder_length)
-    outputs = tokenizer(batch["episode_description"], padding="max_length", truncation=True, max_length=decoder_length)
-    batch["input_ids"] = inputs.input_ids
-    batch["attention_mask"] = inputs.attention_mask
-    batch["global_attention_mask"] = [[1 if i < 128 else 0 for i in range(sequence_length)] for sequence_length in len(inputs.input_ids) * [encoder_length]]
-    batch["decoder_input_ids"] = outputs.input_ids
-    batch["labels"] = outputs.input_ids.copy()
-    # mask loss for padding
-    batch["labels"] = [
-        [-100 if token == tokenizer.pad_token_id else token for token in labels] for labels in batch["labels"]
-    ]
-    batch["decoder_attention_mask"] = outputs.attention_mask
-    return batch
+def remove_by_indices(descr, indxs):
+  return [e for i, e in enumerate(descr) if i not in indxs]
 
-def compute_metrics(pred):
-    labels_ids = pred.label_ids
-    pred_ids = pred.predictions
+class DataHandler():
 
-    # all unnecessary tokens are removed
-    pred_str = tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
+    def __init__(self, dataframe, tokenizer):
+        self.tokenizer = tokenizer
+        self.data = dataframe
+        self.episode_description = self.data.episode_description
+        self.transcript = self.data.transcript
+
+    def __len__(self):
+        return len(self.episode_description)
+
+    def __getitem__(self, index):
+
+        _transcript = self.episode_description.tolist()
+        _description = self.transcript.tolist()
+
+        indxs = []
+
+        for i, des in enumerate(_transcript):
+          if not isinstance(des, str):
+            indxs.append(i)
+
+        for i, des in enumerate(_description):
+          if not isinstance(des, str):
+            indxs.append(i)
+
+        episode_description = remove_by_indices(_transcript, indxs)
+        transcript = remove_by_indices(_description, indxs)
+
+        transcript = str(self.transcript[index])
+        transcript = ' '.join(transcript.split())
+
+        episode_description = str(self.episode_description[index])
+        episode_description = ' '.join(episode_description.split())
+
+        source = self.tokenizer.batch_encode_plus([transcript], add_special_tokens= True, max_length= ENCODER_LENGTH, 
+                                                  padding='longest', return_tensors='pt')
+        target = self.tokenizer.batch_encode_plus([episode_description], max_length= DECODER_LENGTH, 
+                                                  padding='longest', return_tensors='pt')
+
+        source_ids = source['input_ids'].squeeze()
+        source_mask = source['attention_mask'].squeeze()
+        target_ids = target['input_ids'].squeeze()
+        target_mask = target['attention_mask'].squeeze()
+        global_mask = [[1 if i < 128 else 0 for i in range(seq_len)] for seq_len in len(source_ids) * [encoder_length]]
+
+        batch_of_inputs = {
+            'input_ids': source_ids.to(dtype=torch.int64), 
+            "global_attention_mask" : global_mask.to(dtype=torch.int64),
+            'attention_mask': source_mask.to(dtype=torch.int64), 
+            'decoder_input_ids': target_ids.to(dtype=torch.int64),
+            'decoder_attention_mask' : target_mask.to(dtype=torch.int64),
+            'labels': target_ids.to(dtype=torch.int64)
+        }
+        return batch_of_inputs
+
+df = pd.read_csv("/content/drive/MyDrive/Dissertation/data/pickled_for_colab.csv",encoding='latin-1')
+
+train_dataset=df.sample(frac=train_size,random_state=42).reset_index(drop=True)
+val_dataset=df.drop(train_dataset.index).reset_index(drop=True)
+
+training_set = DataHandler(train_dataset, tokenizer)
+val_set = DataHandler(val_dataset, tokenizer)
+
+def metrics(text):
+    labels_ids = text.label_ids
+    pred_ids = text.predictions
+
+    pred_str = tokenizer.batch_decode(pred_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)
     labels_ids[labels_ids == -100] = tokenizer.eos_token_id
-    label_str = tokenizer.batch_decode(labels_ids, skip_special_tokens=True)
 
-    rouge1 = rouge.compute(predictions=pred_str, references=label_str, rouge_types=["rouge1"])["rouge1"].mid
-    rouge2 = rouge.compute(predictions=pred_str, references=label_str, rouge_types=["rouge2"])["rouge2"].mid
-    rougel = rouge.compute(predictions=pred_str, references=label_str, rouge_types=["rougel"])["rougel"].mid
+    rouge1 = rouge.compute(predictions=pred_str, references=tokenizer.batch_decode(labels_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True), rouge_types=["rouge1"])["rouge1"].mid
+    rouge2 = rouge.compute(predictions=pred_str, references=tokenizer.batch_decode(labels_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True), rouge_types=["rouge2"])["rouge2"].mid
+    rougel = rouge.compute(predictions=pred_str, references=tokenizer.batch_decode(labels_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True), rouge_types=["rougel"])["rougel"].mid
 
     return {
         "rouge1_fmeasure": round(rouge1.fmeasure, 2),
@@ -88,25 +126,21 @@ def compute_metrics(pred):
         "rougef_fmeasure": round(rougel.fmeasure, 2),
     }
 
-# make train dataset ready
 train_dataset = train_dataset.map(
-    map_to_encoder_decoder_inputs, batched=True, batch_size=batch_size)
+    training_set, batched=True, batch_size=BATCH_SIZE)
 
 train_dataset.set_format(
-    type="torch", columns=["input_ids", "attention_mask", "global_attention_mask", "decoder_input_ids", "decoder_attention_mask", "labels"],)
-
-# same for validation dataset
-val_dataset = val_dataset.map(
-    map_to_encoder_decoder_inputs, batched=True, batch_size=batch_size)
-
-val_dataset.set_format(
     type="torch", columns=["input_ids", "global_attention_mask", "attention_mask", "decoder_input_ids", "decoder_attention_mask", "labels"],)
 
-# set training arguments
+val_dataset = val_dataset.map(
+    map_to_encoder_decoder_inputs, batched=True, batch_size=BATCH_SIZE)
+
+val_dataset.set_format(
+    type="torch", columns=["input_ids", "global_attention_mask","attention_mask", "decoder_input_ids", "decoder_attention_mask", "labels"],)
+
 training_args = TrainingArguments(
-    output_dir="./",
-    per_device_train_batch_size=batch_size,
-    per_device_eval_batch_size=batch_size,
+    per_device_train_batch_size=BATCH_SIZE,
+    per_device_eval_batch_size=BATCH_SIZE,
     predict_from_generate=True,
     evaluate_during_training=True,
     do_train=True,
@@ -120,34 +154,34 @@ training_args = TrainingArguments(
     fp16=True,
 )
 
-# instantiate trainer
 trainer = Trainer(
     model=model,
     args=training_args,
-    compute_metrics=compute_metrics,
+    compute_metrics=metrics,
     train_dataset=train_dataset,
     eval_dataset=val_dataset,
 )
 
-# start training
 trainer.train()
 
 """*Generate summaries*"""
 
 def generate(batch):
-    inputs = tokenizer(batch["article"], padding="max_length", truncation=True, max_length=encoder_length, return_tensors="pt")
-    input_ids = inputs.input_ids.to("cuda")
-    attention_mask = inputs.attention_mask.to("cuda")
-    global_attention_mask = torch.zeros_like(attention_mask)
-    global_attention_mask[:, :decoder_length] = 1
-    outputs = model.generate(input_ids, attention_mask=attention_mask, global_attention_mask=global_attention_mask)
-    output_str = tokenizer.batch_decode(outputs, skip_special_tokens=True)
-    batch["pred"] = output_str
+    inputs = tokenizer(batch["source"], padding="max_length", truncation=True, max_length=ENCODER_LENGTH, return_tensors="pt")
+    y = tokenizer(batch["target"], padding="max_length", truncation=True, max_length=ENCODER_LENGTH, return_tensors="pt")
+    input_ids = inputs.input_ids.to(DEVICE)
+    attention_mask = inputs.attention_mask.to(DEVICE)
+
+    outputs = model.generate(input_ids, attention_mask=attention_mask, max_length=DECODER_LENGTH, num_beams=2, repetition_penalty=2.5, length_penalty=1.0, early_stopping=True)
+    output_str = tokenizer.batch_decode(outputs, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+    targets = tokenizer.batch_decode(y, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+    batch["generated"] = output_str
+    batch["targets"] = targets
     return batch
 
-results = test_dataset.map(generate, batched=True, batch_size=batch_size)
+results = test_dataset.map(generate, batched=True, batch_size=BATCH_SIZE)
 
-pred_str = results["pred"]
-label_str = results["episode_description"]
+pred_str = results["generated"]
+label_str = results["targets"]
 
 pd.DataFrame(results).to_csv('/content/drive/MyDrive/Dissertation/data/longformer_results.csv')

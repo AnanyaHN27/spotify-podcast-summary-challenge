@@ -20,12 +20,14 @@ main_dir = 'podcasts-transcripts-6to7.tar/podcasts-transcripts-6to7/spotify-podc
 
 # does it contain urls?
 def contain_url(sentence):
-    x = re.search("((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.([a-zA-Z]){2,6}([a-zA-Z0-9\.\&\/\?\:@\-_=#])*", sentence)
-    return not x==None
+    x = re.search("(https\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.([a-zA-Z]){2,6}([a-zA-Z0-9\.\&\/\?\:@\-_=#])*", sentence)
+    if x == None:
+	return False
+    return True
 
 # does it contain sponsors?
 def contain_spon(sentence):
-    spon_list = ["Anchor: The easiest way to make a podcast.", "anchor", "sponsor", "This podcast is sponsored by *"]
+    spon_list = ["Anchor", "sponsor", "This podcast is sponsored by *"]
     spon_reg_list = map(re.compile, spon_list)
     return any(i.match(sentence) for i in spon_reg_list)
 

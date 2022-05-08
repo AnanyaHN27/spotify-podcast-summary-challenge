@@ -39,30 +39,29 @@ concat_data = pd.concat([textrank_data,ep_description],axis=1)
 """*Get the glove embeddings from the file*"""
 
 embeddings = {}
-f = open('/content/drive/MyDrive/Dissertation/data/glove.6B.100d.txt', encoding='utf-8')
-for line in f:
+file = open('/content/drive/MyDrive/Dissertation/data/glove.6B.100d.txt', encoding='utf-8')
+for line in file:
     vals = line.split()
     word = vals[0]
-    coefs = np.asarray(vals[1:], dtype='float32')
-    embeddings[word] = coefs
+    coefficients = np.asarray(vals[1:], dtype='float32')
+    embeddings[word] = coefficients
 f.close()
 
 def build_similarity_matrix(sentences):
   #create an empty similarity matrix
-  matrix = np.zeros([len(sentences), len(sentences)])
-  for i in range(len(sentences)):
-    for j in range(len(sentences)):
-      if i == j:
-        continue
-      #update with the cosines  
-      matrix[i][j] = cosine_similarity(vectors[i].reshape(1, 100), vectors[j].reshape(1, 100))[0, 0]
+  mat_len = len(sentences)
+  matrix = np.zeros([mat_len, mat_len])
+  for i in range(mat_len):
+    for j in range(mat_len):
+      if i != j:
+        matrix[i][j] = cosine_similarity(vectors[i].reshape(1, 50), vectors[j].reshape(1, 50))[0, 0]
   return matrix
 
 def get_vectors(embeddings, sentences):
   vectors = []
   for sent in sentences:
     w_lst = sent.split()
-    v = sum([embeddings.get(w, np.zeros((100,))) for w in w_lst])
+    v = sum([embeddings.get(w, np.zeros((50,))) for w in w_lst])
     v = v/ (len(w_lst) + 0.00001)
     vectors.append(v)
   return vectors

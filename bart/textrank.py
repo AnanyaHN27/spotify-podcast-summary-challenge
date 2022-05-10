@@ -39,13 +39,13 @@ concat_data = pd.concat([textrank_data,ep_description],axis=1)
 """*Get the glove embeddings from the file*"""
 
 embeddings = {}
-file = open('/content/drive/MyDrive/Dissertation/data/glove.6B.100d.txt', encoding='utf-8')
+file = open('/content/drive/MyDrive/Dissertation/data/glove.6B.50d.txt', encoding='utf-8')
 for line in file:
     vals = line.split()
     word = vals[0]
     coefficients = np.asarray(vals[1:], dtype='float32')
     embeddings[word] = coefficients
-f.close()
+file.close()
 
 def build_similarity_matrix(sentences):
   #create an empty similarity matrix

@@ -7,13 +7,12 @@ Original file is located at
     https://colab.research.google.com/drive/14RZMHaxoe4n2xMk2TCD_FM9QAHhyQVK4
 """
 
-!pip install rouge/requirements.txt
-!pip install rouge
-
 """*Imports*"""
 
 !py -m pip install rouge/requirements.txt
 !py -m pip install rouge
+
+import pandas as pd
 
 """*Mount drive*"""
 

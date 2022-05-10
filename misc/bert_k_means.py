@@ -91,7 +91,7 @@ class DataHandler(Dataset):
 
 def train(epoch):
     model.train()
-    for _,data in enumerate(training_loader, 0):
+    for i,data in enumerate(training_loader, 0):
         y = data['target_ids'].to(device, dtype = torch.long)
         y_ids = y[:, :-1].contiguous()
         labels = y[:, 1:].clone().detach()
@@ -99,14 +99,14 @@ def train(epoch):
         ids = data['source_ids'].to(device, dtype = torch.long)
         mask = data['source_mask'].to(device, dtype = torch.long)
 
-        outputs = model(input_ids = ids, attention_mask = mask, decoder_input_ids=y_ids, labels=labels)
+        outputs = model(input_ids = ids, attention_mask = mask)
         loss = outputs[0]
         
         if i%500==0:
-            print(f'Epoch: {epoch}, Loss:  {loss.item()}')
+            print(f'Epoch: {epoch}, Loss:  {(loss)}')
         
         optimizer.zero_grad()
-        loss.backward()
+        loss.mean().backward()
         optimizer.step()
 
 def validate(epoch):
@@ -117,6 +117,7 @@ def validate(epoch):
 
     with torch.no_grad():
         for i, data in enumerate(testing_loader, 0):
+            
             y = data['target_ids'].to(device, dtype = torch.long)
             ids = data['source_ids'].to(device, dtype = torch.long)
             mask = data['source_mask'].to(device, dtype = torch.long)
@@ -137,7 +138,9 @@ def validate(epoch):
             actuals.extend(target)
 
             if i%100==0:
-                print(f'Completed {_}')
+                    print(f'Completed {_}')  
+
+    return predictions, actuals
 
             
     return predictions, actuals
@@ -152,8 +155,8 @@ test_dataset=df.drop(train_dataset.index).reset_index(drop=True)
 training_set = DataHandler(train_dataset, tokenizer)
 testing_set = DataHandler(test_dataset, tokenizer)
 
-training_loader = DataLoader(training_set, 'batch_size': 2, 'shuffle': True)
-testing_loader = DataLoader(testing_set, 'batch_size': 2, 'shuffle': False)
+training_loader = DataLoader(training_set, batch_size= 2, shuffle= True)
+testing_loader = DataLoader(testing_set, batch_size= 2, shuffle= False)
 
 bert_model = BertModel.from_pretrained('bert-base-cased')
 model = bert_model.to(device)
@@ -178,6 +181,11 @@ def bert_summarise(sum_index, text):
   summary = ' '.join([sentences[ind] for ind in sum_index])
   return summary
 
+for epoch in range(2):
+    train(epoch)
+
+sentence_embedding_list = mean_pooling(model(**tokenizer(testing_set)))
+
 sum_of_squared_distances = []
 for k in len(sentence_embedding_list):
     km = KMeans(n_clusters=k)
@@ -189,10 +197,6 @@ plt.ylabel('Sum_of_squared_distances')
 plt.title('Elbow Method For Optimal k')
 plt.show()
 
-for epoch in range(2):
-    train(epoch)
-
-sentence_embedding_list = mean_pooling(model(**tokenizer(testing_set)))
 sum_index = [k_means(embedding) for embedding in sentence_embedding_list]
 summ_list = [bert_summarise(sum_index[i], t) for enumerate(i, t) in sentence_embedding_list]
 

@@ -12,9 +12,12 @@ Original file is located at
 import nltk
 nltk.download('punkt')
 nltk.download('wordnet')
+nltk.download('omw-1.4')
+
+from nltk import word_tokenize
 import pandas as pd
 from nltk.lm.preprocessing import padded_everygram_pipeline
-from nltk.lm import MLE
+from nltk.lm import MLE, Laplace
 from nltk.lm import Vocabulary
 from nltk.translate import meteor_score
 
@@ -49,13 +52,13 @@ def train_fit(tokenized_text, test_sentences):
 
 def perplexity_calc(test_data):
   train_sentences = load()
-  tokenized_text - tokenise(train_sentences)
+  tokenized_text = tokenise(train_sentences)
   test_sentences = pd.read_csv(test_data).summaries.tolist()
   perp = train_fit(tokenized_text, test_sentences)
 
 def meteor(bart, t5):
   tot = 0
   for i in range(len(bart.summaries)):
-    tot += nltk.translate.meteor_score.meteor_score(bart.summaries.tolist()[i], t5.summaries.tolist()[i])
+    tot += nltk.translate.meteor_score.meteor_score([word_tokenize(bart.summaries.tolist()[i])], word_tokenize(t5.summaries.tolist()[i]))
   meteor = tot/len(bart.summaries)
   return meteor

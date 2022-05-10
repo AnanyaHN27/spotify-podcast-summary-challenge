@@ -37,9 +37,9 @@ spanbert_model = Summarizer(custom_model = model, custom_tokenizertokenizer, sen
 
 """*Train SpanBERT*"""
 
-def spanBert(transcript):
+def spanBert(transcript, num_sentences):
   #inputs = tokenizer(transcript, max_length=512, pad_to_max_length=True, return_tensors="pt")
-  outputs = spanbert_model(transcripts, ratio=0.3)
+  outputs = spanbert_model(transcripts, ratio=0.3, num_sentences=num_sentences)
   return ''.join(outputs)
 
 """*Generate and write summaries to csv to be used as input for others*"""
@@ -49,7 +49,7 @@ reference_results = pd.read_csv('/content/drive/MyDrive/Dissertation/data/pickle
 summaries_df = []
 for i in range(transcripts.shape[0]):
   print("step: ", i)
-  summ = spanBert(transcripts['transcript'][i])
+  summ = spanBert(transcripts['transcript'][i], 5)
   summaries_df.append([summ])
 
 df.to_csv('/content/drive/MyDrive/Dissertation/data/' + 'span_bert.csv')

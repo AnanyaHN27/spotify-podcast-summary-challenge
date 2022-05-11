@@ -19,6 +19,7 @@ import logging
 from transformers import LongformerTokenizer, EncoderDecoderModel, Trainer, TrainingArguments
 from datasets import load_dataset
 import torch
+import pandas as pd
 
 """*Setting configurations, loading data*"""
 
@@ -89,11 +90,11 @@ class DataHandler():
         source_mask = source['attention_mask'].squeeze()
         target_ids = target['input_ids'].squeeze()
         target_mask = target['attention_mask'].squeeze()
-        global_mask = [[1 if i < 128 else 0 for i in range(seq_len)] for seq_len in len(source_ids) * [encoder_length]]
+        global_mask = [[1 if i < 128 else 0 for i in range(seq_len)] for seq_len in len(source_ids) * [ENCODER_LENGTH]]
 
         batch_of_inputs = {
             'input_ids': source_ids.to(dtype=torch.int64), 
-            "global_attention_mask" : global_mask.to(dtype=torch.int64),
+            "global_attention_mask" : global_mask,
             'attention_mask': source_mask.to(dtype=torch.int64), 
             'decoder_input_ids': target_ids.to(dtype=torch.int64),
             'decoder_attention_mask' : target_mask.to(dtype=torch.int64),
@@ -101,13 +102,14 @@ class DataHandler():
         }
         return batch_of_inputs
 
-df = pd.read_csv("/content/drive/MyDrive/Dissertation/data/pickled_for_colab.csv",encoding='latin-1')
 
-train_dataset=df.sample(frac=train_size,random_state=42).reset_index(drop=True)
+df = pd.read_csv("/content/drive/MyDrive/Colab Notebooks/pickled_for_colab.csv",encoding='latin-1')
+
+train_dataset=df.sample(frac=0.7,random_state=42).reset_index(drop=True)
 val_dataset=df.drop(train_dataset.index).reset_index(drop=True)
 
-training_set = DataHandler(train_dataset, tokenizer)
-val_set = DataHandler(val_dataset, tokenizer)
+training_set_batch = DataHandler(train_dataset, tokenizer)
+val_set_batch = DataHandler(val_dataset, tokenizer)
 
 def metrics(text):
     labels_ids = text.label_ids
@@ -126,15 +128,14 @@ def metrics(text):
         "rougef_fmeasure": round(rougel.fmeasure, 2),
     }
 
-train_dataset = train_dataset.map(
-    training_set, batched=True, batch_size=BATCH_SIZE)
+train_set = load_dataset('csv', data_files='/content/drive/MyDrive/Colab Notebooks/cleaned_up_for_colab.csv', split="train[:75%]")
+val_set = load_dataset('csv', data_files='/content/drive/MyDrive/Colab Notebooks/cleaned_up_for_colab.csv', split="train[:25%]")
 
+train_dataset = Dataset.from_dict(training_set_batch[1])
 train_dataset.set_format(
     type="torch", columns=["input_ids", "global_attention_mask", "attention_mask", "decoder_input_ids", "decoder_attention_mask", "labels"],)
 
-val_dataset = val_dataset.map(
-    map_to_encoder_decoder_inputs, batched=True, batch_size=BATCH_SIZE)
-
+val_dataset = Dataset.from_dict(val_set_batch[1])
 val_dataset.set_format(
     type="torch", columns=["input_ids", "global_attention_mask","attention_mask", "decoder_input_ids", "decoder_attention_mask", "labels"],)
 

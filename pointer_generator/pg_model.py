@@ -26,6 +26,8 @@ import math
 from tqdm import tqdm
 import pandas as pd
 from nltk.tokenize import word_tokenize
+import nltk
+nltk.download('punkt')
 
 """*Import model code*"""
 
@@ -258,7 +260,7 @@ def train(train_generator, vocab, model, valid_generator=None, rl_ratio=1, saved
                   0.9999 + np.exp(total_batch_count / 0.9999))
 
       batch = next(train_generator)
-      loss = train_batch(batch, model, criterion=nn.NLLLoss(ignore_index=vocab.PAD), optimizer,
+      loss = train_batch(batch, model, nn.NLLLoss(ignore_index=vocab.PAD), optimizer,
                                  forcing_ratio=forcing_ratio,
                                  partial_forcing=True,
                                  vocab=vocab,
@@ -326,8 +328,8 @@ class Hypothesis(object):
                       dec_hidden=dec_hidden, dec_states=decoder_state,
                       attn_dists =attn_dists, coverage = cov)
     
-  def beam_search(self, vocab, input_tensor, input_lengths=None, ext_vocab_size=None, beam_size=10,
-                  min_out_len=100, max_out_len=144, beam_batch):
+  def beam_search(self, vocab, input_tensor, input_lengths, ext_vocab_size, beam_size,
+                  min_out_len, max_out_len, beam_batch):
     batch_size = input_tensor.size(1)
     
     encoder_hidden = beam_batch["encoder_hidden"]
@@ -473,7 +475,7 @@ def evaluate(test_set, vocab, model):
   test_gen = test_set.create_batch(1, vocab)
 
   model.eval()
-  prog_bar = tqdm(range(1, int(len(test_set.pairs) + 1))
+  prog_bar = tqdm(range(1, int(len(test_set.pairs) + 1)))
 
   df = pd.DataFrame(columns = ['predicted', 'episode_description', 'transcript'])
 
@@ -488,16 +490,17 @@ def evaluate(test_set, vocab, model):
       encoder_hidden = model.encoder.init_hidden(batch_size)
       encoder_embedded = model.embedding(model.filter_oov(input_tensor, ext_vocab_size))
       encoder_outputs, encoder_hidden = model.encoder(encoder_embedded, encoder_hidden, None)
+      beam_size=4
       beam_batch = {
           "encoder_hidden": encoder_hidden,
           "encoder_embedded": encoder_embedded,
-          "encoder_outputs": encoder_outputs.expand(-1, beam_size=4, -1).contiguous(), 
+          "encoder_outputs": encoder_outputs.expand(-1, beam_size, -1).contiguous(), 
           "decoder_hidden": model.enc_dec_adapter(encoder_hidden),
       }
       beam_search_obj = Hypothesis([self.vocab.SOS], [0.0], decoder_hidden, [], [], [])
       hypotheses = beam_search_obj.beam_search(input_tensor, vocab, batch["inp_lengths"],
-                                    batch["oov_dict"].ext_vocab_size, beam_size=4, min_out_len=60,
-                                    max_out_len=144, beam_batch)
+                                    batch["oov_dict"].ext_vocab_size, 4, 100,
+                                    144, beam_batch)
       
       to_decode = [h.tokens for h in hypotheses]
 
